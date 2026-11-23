@@ -1,0 +1,819 @@
+/* ═══════════════════════════════════════════════════════════════
+   Academic homepage — minimal, typography-first, light + dark
+   改配色只需要动下面 :root 和 [data-theme="dark"] 两块
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* 浅色模式：底色刻意压深一点点，好让 --bg-elev 的纯白真正"浮"起来 ——
+     之前 #fcfcfa 对纯白几乎没有明度差，胶囊和卡片就没有层次。 */
+  --bg:          #f7f7f2;
+  --bg-elev:     #ffffff;
+  --bg-sunken:   #edede6;
+  --text:        #15171c;
+  --text-dim:    #545a66;
+  --text-faint:  #626975;
+  --line:        #dfdfd6;
+  --line-soft:   #e8e8df;
+  --accent:      #0b6e5f;
+  --accent-hover:#095a4e;
+  --accent-soft: rgba(11, 110, 95, .11);
+  --shadow:      0 1px 2px rgba(28, 30, 24, .05), 0 10px 30px rgba(28, 30, 24, .07);
+  /* 首屏的两层环境光。浅色模式下必须比深色模式更强，否则完全看不见。 */
+  --glow-1:      rgba(11, 110, 95, .16);
+  --glow-2:      rgba(186, 150, 74, .13);
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+               "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-serif: "Newsreader", Georgia, "Songti SC", "Times New Roman", serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  --w: 72rem;                /* 侧栏与正文的总宽度 */
+  --pad: 1.5rem;
+  --r: 10px;               /* 圆角 */
+}
+
+[data-theme="dark"] {
+  --bg:          #0d0e11;
+  --bg-elev:     #14161a;
+  --bg-sunken:   #17191e;
+  --text:        #e7e9ec;
+  --text-dim:    #9aa1ae;
+  --text-faint:  #969eab;
+  --line:        #24272e;
+  --line-soft:   #1c1f25;
+  --accent:      #4fd1b5;
+  --accent-hover:#7ce0ca;
+  --accent-soft: rgba(79, 209, 181, .12);
+  --shadow:      0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .28);
+  --glow-1:      rgba(79, 209, 181, .13);
+  --glow-2:      rgba(70, 100, 155, .13);
+}
+
+/* ─────────────────────────── base ─────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+  -webkit-text-size-adjust: 100%;
+  color-scheme: light;
+}
+[data-theme="dark"] { color-scheme: dark; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.7;
+  letter-spacing: -0.003em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color .25s ease, color .25s ease;
+}
+
+/* 首屏环境光：两层不同色温的径向渐变错开位置，让页面顶部不是一块死平的底色。
+   两个色标都按主题定义（见 --glow-1 / --glow-2）。 */
+body::before {
+  content: "";
+  /* absolute 而非 fixed：光晕锚在文档顶部、只属于首屏，滚过去就是干净纸面。
+     用 fixed 的话视口顶部会永远挂着一层色雾，正文一直在有色带下面读。 */
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 560px;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(78% 92% at 10% -4%, var(--glow-1) 0%, transparent 62%),
+    radial-gradient(68% 82% at 90% 4%,  var(--glow-2) 0%, transparent 64%);
+}
+
+.page-shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 224px minmax(0, 1fr);
+  gap: 4rem;
+  max-width: var(--w);
+  margin: 0 auto;
+  padding: 3.5rem var(--pad) 0;
+}
+main { min-width: 0; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); text-decoration: underline; text-underline-offset: 3px; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.skip-link {
+  position: absolute; left: -9999px; top: 0;
+  background: var(--accent); color: #fff;
+  padding: .6rem 1rem; z-index: 100; border-radius: 0 0 var(--r) 0;
+}
+.skip-link:focus { left: 0; }
+
+/* ─────────────────────────── nav ─────────────────────────── */
+.nav {
+  position: sticky; top: 0; z-index: 50;
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  border-bottom: 1px solid transparent;
+  transition: border-color .25s ease, background-color .25s ease;
+}
+.nav.scrolled { border-bottom-color: var(--line); }
+
+.nav-inner {
+  max-width: var(--w);
+  margin: 0 auto;
+  padding: .7rem var(--pad);
+  display: flex; align-items: center; gap: 1rem;
+}
+
+.nav-brand {
+  font-family: var(--font-serif);
+  font-size: 1.06rem;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity .3s ease, transform .3s ease;
+  pointer-events: none;
+}
+.nav.scrolled .nav-brand { opacity: 1; transform: none; pointer-events: auto; }
+.nav-brand:hover { text-decoration: none; color: var(--accent); }
+
+.nav-links {
+  min-width: 0;
+  overflow-x: auto;
+  margin-left: auto;
+  display: flex; gap: .15rem;
+  font-size: .875rem;
+}
+.nav-links a {
+  color: var(--text-dim);
+  padding: .3rem .6rem;
+  border-radius: 6px;
+  white-space: nowrap;
+  transition: color .18s ease, background-color .18s ease;
+}
+.nav-links a:hover { color: var(--text); background: var(--bg-sunken); text-decoration: none; }
+.nav-links a.active { color: var(--accent); background: var(--accent-soft); }
+
+.theme-toggle {
+  flex-shrink: 0;
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-elev);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color .18s ease, border-color .18s ease, transform .18s ease;
+}
+.theme-toggle:hover { color: var(--accent); border-color: var(--accent); transform: rotate(-12deg); }
+.theme-toggle svg { display: block; grid-area: 1 / 1; }
+.theme-toggle .icon-moon { display: none; }
+[data-theme="dark"] .theme-toggle .icon-sun  { display: none; }
+[data-theme="dark"] .theme-toggle .icon-moon { display: block; }
+
+/* ─────────────────────────── hero ─────────────────────────── */
+.profile { position: sticky; top: 6rem; align-self: start; }
+.avatar { margin: 0 0 1.5rem; width: 192px; }
+.avatar img {
+  display: block;
+  width: 100%; height: auto;
+  /* 保留原有 4:5 照片，以小圆角矩形显示。 */
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+}
+
+.name {
+  font-family: var(--font-serif);
+  font-size: 2.3rem;
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  margin: 0 0 .8rem;
+}
+
+/* 姓名后面的中文名，小一号、淡一号，不抢主名 */
+.name-zh {
+  font-family: var(--font-sans);
+  font-size: .38em;
+  font-weight: 400;
+  color: var(--text-faint);
+  letter-spacing: .04em;
+  margin-left: .34em;
+  vertical-align: .32em;
+}
+
+.tagline {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: .875rem;
+  line-height: 1.7;
+}
+.tagline .org { display: block; color: var(--text); font-weight: 500; }
+.tagline br { display: none; }
+
+/* 临时占位高亮 —— 提醒你这里还没写完，故意做得很刺眼。
+   内容补完后把 HTML 里的 <mark class="todo">…</mark> 连同这几行 CSS 一起删掉。 */
+mark.todo {
+  background: #fde68a;
+  color: #713f12;
+  padding: .06em .45em;
+  border-radius: 4px;
+  font-size: .88em;
+  font-weight: 500;
+}
+[data-theme="dark"] mark.todo { background: #7c4a0f; color: #fde68a; }
+@media print { mark.todo { display: none; } }
+
+.bio { margin: 0 0 .95rem; color: var(--text-dim); }
+.bio strong { color: var(--text); font-weight: 500; }
+.bio:last-child { margin-bottom: 0; }
+.application-note {
+  margin: 1.4rem 0 0;
+  padding: .25rem 0 .25rem 1rem;
+  border-left: 2px solid var(--accent);
+  color: var(--text-dim);
+  font-size: .9375rem;
+}
+.application-note strong { display: block; color: var(--text); font-weight: 600; }
+
+.links {
+  list-style: none;
+  margin: 1.5rem 0 0; padding: 0;
+  display: flex; flex-direction: column; align-items: flex-start; gap: .3rem;
+}
+.links a {
+  display: inline-flex; align-items: center; gap: .4rem;
+  font-size: .875rem;
+  color: var(--text-dim);
+  padding: .3rem 0;
+  border-radius: 3px;
+  transition: color .18s ease, border-color .18s ease, transform .18s ease, background-color .18s ease;
+}
+.links a:hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+.links svg { flex-shrink: 0; opacity: .85; }
+.links .link-cv { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+
+/* ─────────────────────── section shell ─────────────────────── */
+.section {
+  margin: 0;
+  padding: 2.25rem 0;
+  border-top: 1px solid var(--line-soft);
+}
+.section.about { padding-top: 0; border-top: 0; }
+
+.section-title {
+  font-family: var(--font-serif);
+  font-size: 1.65rem;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -.015em;
+  color: var(--text);
+  margin: 0 0 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: .62rem;
+}
+
+.section-note {
+  margin: -.55rem 0 1rem;
+  font-size: .875rem;
+  color: var(--text-faint);
+}
+
+/* 滚动淡入（尊重 prefers-reduced-motion，见文件末尾） */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity .55s cubic-bezier(.2,.7,.3,1), transform .55s cubic-bezier(.2,.7,.3,1);
+}
+.reveal.in { opacity: 1; transform: none; }
+
+/* ─────────────────────────── news ─────────────────────────── */
+.news-list { list-style: none; margin: 0; padding: 0; }
+.news-list li {
+  display: grid;
+  grid-template-columns: 5.4rem 1fr;
+  gap: 1rem;
+  padding: .45rem 0;
+  font-size: .93rem;
+  color: var(--text-dim);
+}
+.news-list li.hidden-news { display: none; }
+.news-list time {
+  font-family: var(--font-mono);
+  font-size: .8rem;
+  color: var(--text-faint);
+  padding-top: .17rem;
+  font-variant-numeric: tabular-nums;
+}
+.news-list strong { color: var(--text); font-weight: 500; }
+
+.show-more {
+  margin-top: .9rem;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: .84rem;
+  color: var(--accent);
+  cursor: pointer;
+}
+.show-more:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ────────────────────── publications ────────────────────── */
+.pub-list { list-style: none; margin: 0; padding: 0; }
+
+.pub {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 1.5rem;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.pub:last-child { border-bottom: none; padding-bottom: 0; }
+.pub.pub-text-only { grid-template-columns: 1fr; }
+.pub-body { min-width: 0; }
+
+.pub-thumb img {
+  display: block;
+  width: 100%; height: auto;
+  aspect-ratio: 20 / 13;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg-sunken);
+  transition: transform .3s cubic-bezier(.2,.8,.3,1), border-color .3s ease;
+}
+.figure-link { display: block; cursor: zoom-in; }
+.figure-link:hover img { border-color: var(--accent); }
+.pub-thumb-full img { display: block; aspect-ratio: auto; }
+
+.pub-title {
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 500;
+  line-height: 1.32;
+  letter-spacing: -0.012em;
+  margin: 0 0 .3rem;
+}
+.pub-title a { color: var(--text); }
+.pub-title a:hover { color: var(--accent); text-decoration: none; }
+
+.pub-authors { margin: 0 0 .12rem; font-size: .875rem; color: var(--text-dim); }
+/* .me = 我自己的名字（加深加粗）；.eq = 共同一作的星号（只加粗，不代表是我） */
+.pub-authors .me { color: var(--text); font-weight: 600; }
+.pub-authors .eq, .section-note .eq { font-weight: 600; }
+
+.pub-venue { margin: 0; font-size: .875rem; color: var(--text-faint); }
+.pub-venue em { color: var(--text-dim); font-style: italic; }
+
+.pub-tldr {
+  margin: .5rem 0 0;
+  font-size: .9375rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+  padding-left: .7rem;
+  border-left: 2px solid var(--line);
+}
+
+.badge {
+  display: inline-block;
+  margin-left: .35rem;
+  font-size: .68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: .1rem .42rem;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  vertical-align: 1.5px;
+}
+.badge-soft { background: var(--bg-sunken); color: var(--text-faint); }
+
+.pub-links {
+  margin-top: .65rem;
+  display: flex; flex-wrap: wrap; gap: .38rem;
+}
+.pub-links a, .bib-btn {
+  font: inherit;
+  font-size: .875rem;
+  line-height: 1.5;
+  padding: .2rem .6rem;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--bg-elev);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color .16s ease, border-color .16s ease, background-color .16s ease;
+}
+.pub-links a:hover, .bib-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  text-decoration: none;
+}
+.bib-btn[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+.bibtex {
+  margin: .7rem 0 0;
+  padding: .8rem .9rem;
+  background: var(--bg-sunken);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: .74rem;
+  line-height: 1.6;
+  color: var(--text-dim);
+  overflow-x: auto;
+  white-space: pre;
+}
+
+/* ────────────────────── figure viewer ────────────────────── */
+.figure-open { overflow: hidden; }
+.figure-dialog {
+  width: min(68rem, calc(100% - 3rem));
+  max-height: calc(100dvh - 3rem);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-elev);
+  color: var(--text);
+  box-shadow: 0 20px 80px rgba(0, 0, 0, .45);
+  overflow: auto;
+}
+.figure-dialog::backdrop { background: rgba(0, 0, 0, .78); }
+.figure-dialog-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: start;
+  gap: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-elev);
+}
+.figure-dialog h2 {
+  margin: 0;
+  font: 500 1.35rem/1.35 var(--font-serif);
+}
+.figure-close {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: .4rem .65rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg-sunken);
+  color: var(--text);
+  font: 500 .875rem/1.5 var(--font-sans);
+  cursor: pointer;
+}
+.figure-close:hover { border-color: var(--accent); color: var(--accent); }
+.figure-close span { margin-left: .35rem; }
+.figure-dialog-content { padding: 1.5rem; }
+.figure-dialog-content img { display: block; width: auto; height: auto; max-width: 100%; margin: 0 auto; }
+.figure-dialog-content p { margin: 1.25rem 0 0; color: var(--text-dim); font-size: .9375rem; }
+
+/* ───────────────────────── timeline ───────────────────────── */
+.timeline { list-style: none; margin: 0; padding: 0; }
+
+.tl-item {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  gap: 1.2rem;
+  padding: 0 0 1.5rem;
+  position: relative;
+}
+.tl-item:last-child { padding-bottom: 0; }
+
+.tl-when {
+  font-family: var(--font-mono);
+  font-size: .78rem;
+  color: var(--text-faint);
+  padding-top: .28rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.tl-what { position: relative; padding-left: 1.2rem; }
+.tl-what::before {
+  content: "";
+  position: absolute; left: 0; top: .62rem;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.tl-item:not(:last-child) .tl-what::after {
+  content: "";
+  position: absolute; left: 3px; top: 1.3rem; bottom: -1.5rem;
+  width: 1px;
+  background: var(--line);
+}
+
+.tl-what h3 {
+  margin: 0 0 .2rem;
+  font-size: .96rem;
+  font-weight: 600;
+  letter-spacing: -0.008em;
+}
+.tl-org { font-weight: 400; color: var(--text-dim); }
+.tl-what p { margin: 0; font-size: .875rem; color: var(--text-dim); }
+.tl-what p + p { margin-top: .65rem; }
+
+/* ────────────────────────── awards ────────────────────────── */
+.award-list { list-style: none; margin: 0; padding: 0; }
+.award-list li {
+  display: grid;
+  grid-template-columns: 5.4rem 1fr;
+  gap: 1rem;
+  padding: .4rem 0;
+  font-size: .92rem;
+  color: var(--text-dim);
+  border-bottom: 1px dashed var(--line-soft);
+}
+.award-list li:last-child { border-bottom: none; }
+.award-list time {
+  font-family: var(--font-mono);
+  font-size: .8rem;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+.award-list strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.award-detail {
+  display: block;
+  margin-top: .12rem;
+  font-size: .84rem;
+  color: var(--text-faint);
+  line-height: 1.55;
+}
+
+/* ──────────── beyond research：左文右图，整屏一起翻 ────────────
+   min-height 是为了让翻页时容器高度不跳 —— 各屏文字长短不一，
+   没有下限的话按一次按钮整段内容会上下弹一下。 */
+/* .paged 由 JS 加上。没有它（= JS 没跑）时五屏全部竖排显示，内容不丢。
+
+   翻页态把五屏全部叠放在同一个网格格子里（grid-area: 1/1），只切换可见性 ——
+   这样容器高度恒等于最高那一屏，与视口宽度无关。
+   用 display:none 藏起来是不行的：那样容器高度只取决于当前屏，
+   各屏文字长短不同，翻页时整段内容会上下弹（min-height 只能兜住某一个宽度）。
+   visibility:hidden 同时也会把非当前屏从读屏软件里移除。 */
+.bslides.paged {
+  display: grid;
+  /* pan-y：纵向滑动仍然交给浏览器滚页面，横向留给我们做翻页。
+     手机上抢掉纵向滑动会让这块区域滚不动，代价太大。 */
+  touch-action: pan-y;
+}
+.bslides.paged > .bslide {
+  grid-area: 1 / 1;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateX(8px);
+  transition: opacity .22s ease, transform .22s ease, visibility .22s ease;
+}
+.bslides.paged > .bslide.is-on {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+}
+/* 拖动时给一点跟手的反馈 */
+.bslides.paged.dragging { cursor: grab; }
+
+.bslides:not(.paged) .bslide + .bslide {
+  margin-top: 1.4rem;
+  padding-top: 1.4rem;
+  border-top: 1px dashed var(--line-soft);
+}
+
+.bslide {
+  display: grid;
+  grid-template-columns: 1fr 140px;
+  gap: 1.7rem;
+  align-items: start;
+  /* 不再需要 min-height —— 五屏叠放后，容器高度自然等于最高那屏。 */
+}
+
+.b-label {
+  display: block;
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .11em;
+  color: var(--text-faint);
+}
+
+.bslide-text {
+  margin: .5rem 0 0;
+  font-size: .92rem;
+  color: var(--text-dim);
+}
+.bslide-text em { color: var(--text); font-style: italic; }
+.bslide-text strong { color: var(--text); font-weight: 500; }
+
+.bslide-fig { margin: 0; }
+.bslide-fig img {
+  display: block;
+  /* height: auto 不能省 —— HTML 上的 height="400" 属性会作为呈现提示生效，
+     显式高度会压过 aspect-ratio，图就会被拉成 200×400。 */
+  width: 100%; height: auto;
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--bg-sunken);
+  box-shadow: var(--shadow);
+  opacity: 1;
+  transition: opacity .22s ease;
+}
+.bslide-fig img.swapping { opacity: 0; }
+
+.bslide-bar {
+  margin-top: 1.1rem;
+  display: flex; align-items: center; gap: .35rem;
+}
+/* 这行不能省。hidden 属性靠浏览器默认样式表的 [hidden]{display:none} 生效，
+   而上面的 display:flex 是作者样式、优先级更高，会把它压过去 ——
+   结果就是 JS 没跑时控制条照样显示，但没有绑定事件，按钮点不动。 */
+.bslide-bar[hidden] { display: none; }
+.gal-btn {
+  width: 26px; height: 22px;
+  display: grid; place-items: center;
+  padding: 0;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg-elev);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color .16s ease, border-color .16s ease, background-color .16s ease;
+}
+.gal-btn:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+.gal-count {
+  margin-left: .2rem;
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+@media print { .bslide-fig, .bslide-bar { display: none; } }
+
+/* ───────────────────────── contact ───────────────────────── */
+.contact-line { margin: 0 0 .5rem; color: var(--text-dim); font-size: .95rem; }
+
+.copy-mail {
+  font: inherit;
+  font-size: .875rem;
+  display: inline-flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+  max-width: 100%;
+  padding: .2rem .6rem;
+  margin-left: .15rem;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--bg-elev);
+  color: var(--accent);
+  cursor: pointer;
+  transition: border-color .18s ease, background-color .18s ease;
+}
+.mail-text { white-space: nowrap; }
+.copy-mail:hover { border-color: var(--accent); background: var(--accent-soft); }
+.copy-hint {
+  font-size: .68rem;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--text-faint);
+  border-left: 1px solid var(--line);
+  padding-left: .5rem;
+}
+.copy-mail.copied .copy-hint { color: var(--accent); }
+
+.contact-sub { margin: 0; font-size: .85rem; color: var(--text-faint); }
+
+/* ────────────────────────── footer ────────────────────────── */
+.footer {
+  max-width: var(--w);
+  margin: 0 auto;
+  padding: 2.5rem var(--pad) 3.5rem;
+  border-top: 1px solid var(--line-soft);
+  font-size: .8rem;
+  color: var(--text-faint);
+}
+.footer p { margin: 0; }
+.footer-sub { margin-top: .2rem; opacity: .8; }
+
+/* ───────────────────────── responsive ───────────────────────── */
+@media (min-width: 901px) and (max-height: 720px) {
+  .profile { position: static; }
+}
+
+@media (max-width: 1050px) {
+  .page-shell { grid-template-columns: 192px minmax(0, 1fr); gap: 2.5rem; }
+  .pub { grid-template-columns: 150px minmax(0, 1fr); gap: 1.25rem; }
+}
+
+@media (max-width: 900px) {
+  .page-shell { display: block; max-width: 48rem; padding-top: 2.5rem; }
+  .profile { position: static; display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 2rem; margin-bottom: 2.5rem; }
+  .avatar { width: 160px; margin: 0; }
+  .links { flex-direction: row; flex-wrap: wrap; column-gap: 1.25rem; margin-top: 1rem; }
+  .pub { grid-template-columns: 180px minmax(0, 1fr); }
+  .nav-brand { display: none; }
+  .nav-links { margin-left: 0; margin-right: auto; }
+}
+
+@media (max-width: 720px) {
+  .nav-links { font-size: .875rem; gap: 0; }
+  .nav-links a { padding: .3rem .42rem; }
+  .nav-brand { display: none; }
+
+  .pub { grid-template-columns: 1fr; gap: .85rem; }
+  .pub-thumb { max-width: 260px; }
+
+  .tl-item, .news-list li, .award-list li { grid-template-columns: 1fr; gap: .15rem; }
+  /* 窄屏改成单列：文字在上，照片在下 */
+  .bslide { grid-template-columns: 1fr; gap: 1.1rem; }
+  .bslide-fig { max-width: 180px; }
+  .tl-what { padding-left: 1.1rem; }
+  .tl-item:not(:last-child) .tl-what::after { bottom: -1.5rem; }
+}
+
+@media (max-width: 560px) {
+  :root { --pad: 1.25rem; }
+  .nav-inner { gap: .65rem; }
+  .profile { grid-template-columns: 1fr; justify-items: center; gap: 1.25rem; text-align: center; }
+  .avatar { width: 132px; }
+  .name { font-size: 2.3rem; margin-bottom: .6rem; }
+  .tagline .org { display: inline; }
+  .tagline br { display: initial; }
+  .links { justify-content: center; column-gap: 1rem; row-gap: .15rem; }
+  .section { padding: 1.8rem 0; }
+  .section-title { font-size: 1.5rem; }
+  .figure-dialog { width: calc(100% - 1rem); max-height: calc(100dvh - 1rem); }
+  .figure-dialog-head { padding: 1rem; gap: .75rem; }
+  .figure-dialog h2 { font-size: 1.125rem; }
+  .figure-dialog-content { padding: 1rem; }
+}
+
+/* ───────────────────────── a11y / print ───────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+  .reveal { opacity: 1; transform: none; }
+}
+
+@media print {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+  .nav, .theme-toggle, .show-more, .pub-thumb, .figure-dialog, body::before { display: none !important; }
+  body { background: #fff; color: #000; font-size: 11pt; }
+  html.figure-open { overflow: visible; }
+  .page-shell { display: block; max-width: none; padding: 0; }
+  .profile { position: static; display: block; margin: 0 0 1rem; }
+  .avatar { display: none; }
+  .tagline .org { display: inline; }
+  .tagline br { display: initial; }
+  .links { flex-direction: row; gap: 1rem; margin-top: .5rem; }
+  .section, .footer { max-width: none; padding: .8rem 0; }
+  a { color: #000; text-decoration: underline; }
+  :root, [data-theme="dark"] {
+    --text: #000;
+    --text-dim: #222;
+    --text-faint: #444;
+    --accent: #000;
+    --bg-elev: #fff;
+    --line: #bbb;
+    --line-soft: #ddd;
+  }
+  .reveal { opacity: 1 !important; transform: none !important; }
+  .news-list li.hidden-news { display: grid; }
+  .pub { display: block; }
+  .pub, .tl-item, .award-list li { break-inside: avoid; }
+  .section-title { break-after: avoid; }
+  .pub-links, .bibtex, .copy-hint { display: none !important; }
+}
