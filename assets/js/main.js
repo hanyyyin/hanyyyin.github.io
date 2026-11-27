@@ -114,6 +114,20 @@
     }
   }
 
+  // 打印时包含折叠论文，结束后恢复阅读时的展开状态。
+  var morePublications = document.getElementById('morePublications');
+  if (morePublications) {
+    var publicationsBeforePrint = null;
+    window.addEventListener('beforeprint', function () {
+      if (publicationsBeforePrint === null) publicationsBeforePrint = morePublications.open;
+      morePublications.open = true;
+    });
+    window.addEventListener('afterprint', function () {
+      if (publicationsBeforePrint !== null) morePublications.open = publicationsBeforePrint;
+      publicationsBeforePrint = null;
+    });
+  }
+
   /* ── 6. BibTeX 展开 / 收起 ───────────────────────────────── */
   document.querySelectorAll('.bib-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
@@ -234,91 +248,74 @@
     });
   }
 
-  /* ── 8. Beyond Research 翻页 ────────────────────────────────
-     内容在 index.html 里，这里只负责"显示哪一屏"。
-     容器加上 .paged 之后 CSS 才开始隐藏非当前屏 ——
-     所以这段代码没跑的话，五屏会全部竖排显示，内容不会丢。 */
-  var bslides = document.getElementById('bslides');
-  var bBar    = document.getElementById('bBar');
-  var bCount  = document.getElementById('bCount');
+  /* ── 8. Beyond Research 照片集 ──────────────────────────── */
+  var photoTrack = document.getElementById('photoTrack');
+  var photoControls = document.getElementById('photoControls');
+  if (photoTrack && photoControls) {
+    var photoPrev = document.getElementById('photoPrev');
+    var photoNext = document.getElementById('photoNext');
+    var photoCards = photoTrack.querySelectorAll('.photo-card');
+    var photoCount = document.getElementById('photoCount');
+    var photoStep = function () {
+      return photoCards.length > 1
+        ? photoCards[1].getBoundingClientRect().left - photoCards[0].getBoundingClientRect().left
+        : photoTrack.clientWidth;
+    };
+    var updatePhotoButtons = function () {
+      photoPrev.disabled = photoTrack.scrollLeft <= 1;
+      photoNext.disabled = photoTrack.scrollLeft >= photoTrack.scrollWidth - photoTrack.clientWidth - 1;
+      var position = Math.min(photoCards.length, Math.round(photoTrack.scrollLeft / photoStep()) + 1);
+      var count = position + ' / ' + photoCards.length;
+      if (photoCount && photoCount.textContent !== count) photoCount.textContent = count;
+    };
+    var scrollPhotos = function (left) {
+      photoTrack.scrollTo({ left: left, behavior: reduceMotion ? 'auto' : 'smooth' });
+    };
+    var movePhotos = function (direction) {
+      scrollPhotos(photoTrack.scrollLeft + direction * photoStep());
+    };
+    photoControls.hidden = false;
+    updatePhotoButtons();
+    photoPrev.addEventListener('click', function () { movePhotos(-1); });
+    photoNext.addEventListener('click', function () { movePhotos(1); });
+    photoTrack.addEventListener('scroll', updatePhotoButtons, { passive: true });
+    window.addEventListener('resize', updatePhotoButtons);
+    photoTrack.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowLeft') { e.preventDefault(); movePhotos(-1); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); movePhotos(1); }
+      if (e.key === 'Home') { e.preventDefault(); scrollPhotos(0); }
+      if (e.key === 'End') { e.preventDefault(); scrollPhotos(photoTrack.scrollWidth); }
+    });
 
-  if (bslides && bBar) {
-    var slides = Array.prototype.slice.call(bslides.querySelectorAll('.bslide'));
-
-    if (slides.length > 1) {
-      var bi = 0;
-
-      var show = function (dir) {
-        slides[bi].classList.remove('is-on');
-        bi = (bi + dir + slides.length) % slides.length;
-        slides[bi].classList.add('is-on');
-        bCount.textContent = (bi + 1) + ' / ' + slides.length;
-
-        // 预取相邻两屏的图，翻过去时不会先看到空框
-        [bi + 1, bi - 1].forEach(function (n) {
-          var img = slides[(n + slides.length) % slides.length].querySelector('img');
-          if (img && !img.dataset.warm) {
-            var pre = new Image();
-            pre.src = img.getAttribute('src');
-            img.dataset.warm = '1';
-          }
-        });
-      };
-
-      bslides.classList.add('paged');
-      slides[0].classList.add('is-on');
-      bCount.textContent = '1 / ' + slides.length;
-      bBar.hidden = false;
-      show(0);
-
-      bBar.addEventListener('click', function (e) {
-        var btn = e.target.closest('.gal-btn');
-        if (btn) show(parseInt(btn.dataset.dir, 10));
-      });
-
-      // 方向键：焦点落在这一块里时，左右和上下都能翻
-      document.getElementById('beyond').addEventListener('keydown', function (e) {
-        if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   { e.preventDefault(); show(-1); }
-        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); show(1); }
-      });
-
-      // 横向滑动（手指 / 鼠标拖动）。只认明显偏横向的手势 ——
-      // 纵向的留给页面滚动，见 CSS 里的 touch-action: pan-y。
-      var SWIPE_MIN = 40;
-      var sx = 0, sy = 0, dragging = false;
-
-      bslides.addEventListener('pointerdown', function (e) {
-        if (e.pointerType === 'mouse' && e.button !== 0) return;
-        dragging = true; sx = e.clientX; sy = e.clientY;
-        bslides.classList.add('dragging');
-      });
-
-      var endDrag = function (e) {
-        if (!dragging) return;
-        dragging = false;
-        bslides.classList.remove('dragging');
-        var dx = e.clientX - sx, dy = e.clientY - sy;
-        if (Math.abs(dx) < SWIPE_MIN) return;      // 太短，当成点击
-        if (Math.abs(dx) < Math.abs(dy)) return;   // 偏纵向，让页面滚
-        show(dx < 0 ? 1 : -1);                     // 往左滑 = 下一屏
-      };
-      bslides.addEventListener('pointerup', endDrag);
-      bslides.addEventListener('pointercancel', function () {
-        dragging = false;
-        bslides.classList.remove('dragging');
-      });
-
-      // 触控板横向滚动。deltaY 更大时直接放行，不去劫持页面的纵向滚动。
-      var wheelLock = false;
-      bslides.addEventListener('wheel', function (e) {
-        if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) return;
-        if (Math.abs(e.deltaX) < 12 || wheelLock) return;
-        e.preventDefault();
-        wheelLock = true;
-        show(e.deltaX > 0 ? 1 : -1);
-        setTimeout(function () { wheelLock = false; }, 320);
-      }, { passive: false });
-    }
+    // 触屏和触控板使用原生滚动；鼠标拖动只作用于图片集。
+    var photoDrag = null;
+    photoTrack.addEventListener('pointerdown', function (e) {
+      if (e.pointerType !== 'mouse' || e.button !== 0) return;
+      photoDrag = { id: e.pointerId, x: e.clientX, left: photoTrack.scrollLeft, moved: false };
+      photoTrack.setPointerCapture(e.pointerId);
+      photoTrack.focus({ preventScroll: true });
+      e.preventDefault();
+    });
+    photoTrack.addEventListener('pointermove', function (e) {
+      if (!photoDrag || e.pointerId !== photoDrag.id) return;
+      var dx = e.clientX - photoDrag.x;
+      if (!photoDrag.moved && Math.abs(dx) < 4) return;
+      photoDrag.moved = true;
+      photoTrack.classList.add('is-dragging');
+      photoTrack.scrollLeft = photoDrag.left - dx;
+    });
+    var endPhotoDrag = function (e) {
+      if (!photoDrag || e.pointerId !== photoDrag.id) return;
+      var moved = photoDrag.moved;
+      var destination = Math.round(photoTrack.scrollLeft / photoStep()) * photoStep();
+      photoDrag = null;
+      photoTrack.classList.remove('is-dragging');
+      if (photoTrack.hasPointerCapture(e.pointerId)) photoTrack.releasePointerCapture(e.pointerId);
+      if (moved) scrollPhotos(destination);
+    };
+    photoTrack.addEventListener('pointerup', endPhotoDrag);
+    photoTrack.addEventListener('pointercancel', endPhotoDrag);
+    photoTrack.addEventListener('lostpointercapture', endPhotoDrag);
   }
 
   /* ── 9. 页脚年份自动更新 ─────────────────────────────────── */
